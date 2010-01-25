@@ -33,16 +33,16 @@
  *
  * Converted to JSON:
  * {
- *   name: F,
+ *   name: "F",
  *   branchset: [
- *     {name: A, length: 0.1},
- *     {name: B, length: 0.2},
+ *     {name: "A", length: 0.1},
+ *     {name: "B", length: 0.2},
  *     {
- *       name: E,
+ *       name: "E",
  *       length: 0.5,
  *       branchset: [
- *         {name: C, length: 0.3},
- *         {name: D, length: 0.4}
+ *         {name: "C", length: 0.3},
+ *         {name: "D", length: 0.4}
  *       ]
  *     }
  *   ]
@@ -58,46 +58,31 @@
  * }
  */
 (function(exports) {
-  var out = typeof exports != 'undefined' ? exports : this;
-  var Iterator = function(a) {
-    this.a = a;
-    this.i = 0;
-  }
-  Iterator.prototype = {
-    next: function() {
-      return (this.i < this.a.length) ? this.a[this.i++] : undefined;
-    },
-    last: function() {
-      return (this.i > 1) ? this.a[this.i-2] : undefined;
-    }
-  };
-  out.parse = function(s) {
+  exports.parse = function(s) {
+    var ancestors = [];
     var tree = {};
-    var x = s.split(/\s*(;|\(|\)|,|:)\s*/);
-    var tokens = new Iterator(x);
-    recurse(tree, tokens);
-    return tree;
-  };
-
-  var recurse = function(tree, tokens, parentTree) {
-    var token;
-    while ((token = tokens.next()) !== undefined) {
+    var tokens = s.split(/\s*(;|\(|\)|,|:)\s*/);
+    for (var i=0; i<tokens.length; i++) {
+      var token = tokens[i];
       switch (token) {
         case '(': // new branchset
           var subtree = {};
           tree.branchset = [subtree];
-          recurse(subtree, tokens, tree);
+          ancestors.push(tree);
+          tree = subtree;
           break;
         case ',': // another branch
           var subtree = {};
-          parentTree.branchset.push(subtree);
-          return recurse(subtree, tokens, parentTree);
+          ancestors[ancestors.length-1].branchset.push(subtree);
+          tree = subtree;
+          break;
         case ')': // optional name next
-          return;
+          tree = ancestors.pop();
+          break;
         case ':': // optional length next
           break;
         default:
-          var x = tokens.last();
+          var x = tokens[i-1];
           if (x == ')' || x == '(' || x == ',') {
             tree.name = token;
           } else if (x == ':') {
@@ -105,6 +90,7 @@
           }
       }
     }
+    return tree;
   };
 })(
     // exports will be set in any commonjs platform; use it if it's available
