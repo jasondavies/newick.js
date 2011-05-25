@@ -98,5 +98,5 @@
     exports :
     // otherwise construct a name space.  outside the anonymous function,
     // "this" will always be "window" in a browser, even in strict mode.
-    this.NAMESPACE = {}
+    this.Newick = {}
 );
