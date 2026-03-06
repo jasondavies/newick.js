@@ -1,8 +1,8 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const newick = require("../src/newick");
-const parse = newick.parse;
-const serialize = newick.serialize;
+const Newick = require("../src/newick");
+const parse = Newick.parse;
+const serialize = Newick.serialize;
 
 test("parses a tree with names and branch lengths", () => {
   const tree = parse("(A: 0.1,B: 0.2,(C:0.3,D:0.4)E:0.5)F;");
