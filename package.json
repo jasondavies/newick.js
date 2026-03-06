@@ -1,0 +1,20 @@
+{
+  "name": "newick",
+  "version": "0.0.0",
+  "description": "JavaScript library for parsing the Newick format.",
+  "main": "src/newick.js",
+  "author": "Jason Davies",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jasondavies/newick.js.git"
+  },
+  "scripts": {
+    "test": "node --test test/test.js"
+  },
+  "keywords": [
+    "newick",
+    "parser",
+    "phylogenetics"
+  ],
+  "license": "MIT"
+}
