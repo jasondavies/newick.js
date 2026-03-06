@@ -59,38 +59,276 @@
  */
 (function(exports) {
   exports.parse = function(s) {
-    var ancestors = [];
-    var tree = {};
-    var tokens = s.split(/\s*(;|\(|\)|,|:)\s*/);
-    for (var i=0; i<tokens.length; i++) {
-      var token = tokens[i];
-      switch (token) {
-        case '(': // new branchset
-          var subtree = {};
-          tree.branchset = [subtree];
-          ancestors.push(tree);
-          tree = subtree;
-          break;
-        case ',': // another branch
-          var subtree = {};
-          ancestors[ancestors.length-1].branchset.push(subtree);
-          tree = subtree;
-          break;
-        case ')': // optional name next
-          tree = ancestors.pop();
-          break;
-        case ':': // optional length next
-          break;
-        default:
-          var x = tokens[i-1];
-          if ((i === 0 && token !== '') || x == ')' || x == '(' || x == ',') {
-            tree.name = token;
-          } else if (x == ':') {
-            tree.length = parseFloat(token);
+    var i = 0;
+    var n = s.length;
+
+    function isWhitespace(ch) {
+      return ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r' || ch == '\f';
+    }
+
+    function isDigit(ch) {
+      return ch >= '0' && ch <= '9';
+    }
+
+    function syntaxError(message) {
+      throw new SyntaxError(message + ' at position ' + i);
+    }
+
+    function skipWhitespaceAndComments() {
+      while (i < n) {
+        var ch = s.charAt(i);
+        if (isWhitespace(ch)) {
+          i++;
+          continue;
+        }
+        if (ch == '[') {
+          // Support nested comments, which some tools emit.
+          var depth = 1;
+          i++;
+          while (i < n && depth > 0) {
+            ch = s.charAt(i);
+            if (ch == '[') {
+              depth++;
+            } else if (ch == ']') {
+              depth--;
+            }
+            i++;
           }
+          if (depth > 0) {
+            syntaxError('Unterminated comment');
+          }
+          continue;
+        }
+        break;
       }
     }
+
+    function parseQuotedLabel() {
+      var parts = [];
+      i++; // opening quote
+      var segmentStart = i;
+      while (i < n) {
+        var ch = s.charAt(i);
+        if (ch == "'") {
+          parts.push(s.slice(segmentStart, i));
+          if (s.charAt(i + 1) == "'") {
+            parts.push("'");
+            i += 2;
+            segmentStart = i;
+            continue;
+          }
+          i++; // closing quote
+          return parts.join('');
+        }
+        if (ch == '\n' || ch == '\r') {
+          syntaxError('Newline in quoted label');
+        }
+        i++;
+      }
+      syntaxError('Unterminated quoted label');
+    }
+
+    function parseUnquotedLabel() {
+      var start = i;
+      while (i < n) {
+        var ch = s.charAt(i);
+        if (isWhitespace(ch) || ch == '(' || ch == ')' || ch == ',' || ch == ':' || ch == ';' || ch == '[' || ch == ']') {
+          break;
+        }
+        if (ch == "'") {
+          syntaxError('Single quote is not allowed in unquoted labels');
+        }
+        i++;
+      }
+      if (i == start) {
+        return undefined;
+      }
+      return s.slice(start, i).replace(/_/g, ' ');
+    }
+
+    function parseLabel() {
+      skipWhitespaceAndComments();
+      if (i >= n) {
+        return undefined;
+      }
+      if (s.charAt(i) == "'") {
+        return parseQuotedLabel();
+      }
+      return parseUnquotedLabel();
+    }
+
+    function parseLength() {
+      skipWhitespaceAndComments();
+      var start = i;
+      if (i >= n) {
+        syntaxError('Missing branch length');
+      }
+      var ch = s.charAt(i);
+      if (ch == ',' || ch == ')' || ch == ';' || ch == '[' || ch == ']') {
+        syntaxError('Missing branch length');
+      }
+
+      if (ch == '+' || ch == '-') {
+        i++;
+      }
+
+      var integerDigits = 0;
+      while (i < n && isDigit(s.charAt(i))) {
+        integerDigits++;
+        i++;
+      }
+
+      var fractionalDigits = 0;
+      if (s.charAt(i) == '.') {
+        i++;
+        while (i < n && isDigit(s.charAt(i))) {
+          fractionalDigits++;
+          i++;
+        }
+      }
+
+      if (integerDigits == 0 && fractionalDigits == 0) {
+        while (i < n) {
+          ch = s.charAt(i);
+          if (isWhitespace(ch) || ch == ',' || ch == ')' || ch == ';' || ch == '[' || ch == ']') {
+            break;
+          }
+          i++;
+        }
+        syntaxError('Invalid branch length "' + s.slice(start, i) + '"');
+      }
+
+      ch = s.charAt(i);
+      if (ch == 'e' || ch == 'E') {
+        i++;
+        ch = s.charAt(i);
+        if (ch == '+' || ch == '-') {
+          i++;
+        }
+        var exponentDigits = 0;
+        while (i < n && isDigit(s.charAt(i))) {
+          exponentDigits++;
+          i++;
+        }
+        if (exponentDigits == 0) {
+          while (i < n) {
+            ch = s.charAt(i);
+            if (isWhitespace(ch) || ch == ',' || ch == ')' || ch == ';' || ch == '[' || ch == ']') {
+              break;
+            }
+            i++;
+          }
+          syntaxError('Invalid branch length "' + s.slice(start, i) + '"');
+        }
+      }
+
+      if (i < n) {
+        ch = s.charAt(i);
+        if (!isWhitespace(ch) && ch != ',' && ch != ')' && ch != ';' && ch != '[' && ch != ']') {
+          while (i < n) {
+            ch = s.charAt(i);
+            if (isWhitespace(ch) || ch == ',' || ch == ')' || ch == ';' || ch == '[' || ch == ']') {
+              break;
+            }
+            i++;
+          }
+          syntaxError('Invalid branch length "' + s.slice(start, i) + '"');
+        }
+      }
+
+      return Number(s.slice(start, i));
+    }
+
+    function parseSubtree() {
+      skipWhitespaceAndComments();
+      if (i >= n) {
+        syntaxError('Unexpected end of input');
+      }
+      var node = {};
+      if (s.charAt(i) == '(') {
+        i++;
+        node.branchset = [];
+        skipWhitespaceAndComments();
+        if (s.charAt(i) == ')') {
+          syntaxError('Empty descendant list');
+        }
+        while (true) {
+          node.branchset.push(parseSubtree());
+          skipWhitespaceAndComments();
+          var ch = s.charAt(i);
+          if (ch == ',') {
+            i++;
+            continue;
+          }
+          if (ch == ')') {
+            i++;
+            break;
+          }
+          syntaxError("Expected ',' or ')'");
+        }
+        var internalLabel = parseLabel();
+        if (internalLabel !== undefined) {
+          node.name = internalLabel;
+        }
+      } else {
+        var leafLabel = parseLabel();
+        if (leafLabel === undefined) {
+          syntaxError("Expected '(' or label");
+        }
+        node.name = leafLabel;
+      }
+
+      skipWhitespaceAndComments();
+      if (s.charAt(i) == ':') {
+        i++;
+        node.length = parseLength();
+      }
+      return node;
+    }
+
+    var tree = parseSubtree();
+    skipWhitespaceAndComments();
+    if (s.charAt(i) != ';') {
+      syntaxError("Expected ';'");
+    }
+    i++;
+    skipWhitespaceAndComments();
+    if (i < n) {
+      syntaxError("Unexpected content after ';'");
+    }
     return tree;
+  };
+
+  exports.serialize = function(tree) {
+    function formatName(name) {
+      if (name === undefined || name === null || name === '') {
+        return '';
+      }
+      name = String(name);
+      if (/[\s\(\)\[\]':;,]/.test(name)) {
+        return "'" + name.replace(/'/g, "''") + "'";
+      }
+      return name;
+    }
+
+    function formatSubtree(node) {
+      var output = '';
+      if (node.branchset && node.branchset.length !== undefined) {
+        output += '(';
+        for (var i=0; i<node.branchset.length; i++) {
+          if (i > 0) output += ',';
+          output += formatSubtree(node.branchset[i]);
+        }
+        output += ')';
+      }
+      output += formatName(node.name);
+      if (node.length !== undefined && node.length !== null && node.length !== '') {
+        output += ':' + node.length;
+      }
+      return output;
+    }
+
+    return formatSubtree(tree || {}) + ';';
   };
 })(
     // exports will be set in any commonjs platform; use it if it's available
