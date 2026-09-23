@@ -25,6 +25,7 @@ Parses a Newick string and returns a tree object.
 - Supports quoted labels (`'A B'`) and escaped quotes (`'E''F'` -> `E'F`).
 - Ignores comments in square brackets (`[comment]`), including nested comments.
 - Converts underscores in unquoted labels to spaces (`A_B` -> `A B`).
+- Supports unnamed leaves with optional branch lengths (`(,:1);`). An omitted label leaves `name` absent; an explicitly quoted empty label (`''`) sets `name` to `""`.
 - Validates branch lengths as signed/unsigned decimal numbers, with optional exponent.
 - Requires a trailing semicolon (`;`).
 
@@ -59,6 +60,7 @@ Serializes a tree object into Newick text.
 - Writes branch sets as `(child1,child2,...)`.
 - Writes `name` and `:length` when present.
 - Quotes labels when required and escapes `'` as `''`.
+- Quotes literal underscores and explicitly empty labels to preserve them when parsed again.
 
 Example:
 

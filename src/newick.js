@@ -248,10 +248,6 @@
       if (s.charAt(i) == '(') {
         i++;
         node.branchset = [];
-        skipWhitespaceAndComments();
-        if (s.charAt(i) == ')') {
-          syntaxError('Empty descendant list');
-        }
         while (true) {
           node.branchset.push(parseSubtree());
           skipWhitespaceAndComments();
@@ -272,10 +268,15 @@
         }
       } else {
         var leafLabel = parseLabel();
-        if (leafLabel === undefined) {
-          syntaxError("Expected '(' or label");
+        if (leafLabel !== undefined) {
+          node.name = leafLabel;
+        } else {
+          // A leaf may omit its name, with or without a branch length.
+          var leafEnd = s.charAt(i);
+          if (leafEnd != ':' && leafEnd != ',' && leafEnd != ')' && leafEnd != ';') {
+            syntaxError("Expected '(' or label");
+          }
         }
-        node.name = leafLabel;
       }
 
       skipWhitespaceAndComments();
@@ -301,11 +302,11 @@
 
   exports.serialize = function(tree) {
     function formatName(name) {
-      if (name === undefined || name === null || name === '') {
+      if (name === undefined || name === null) {
         return '';
       }
       name = String(name);
-      if (/[\s\(\)\[\]':;,]/.test(name)) {
+      if (name === '' || /[_\s\(\)\[\]':;,]/.test(name)) {
         return "'" + name.replace(/'/g, "''") + "'";
       }
       return name;

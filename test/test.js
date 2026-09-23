@@ -26,6 +26,36 @@ test("parses a root-only tree name", () => {
   assert.equal(tree.name, "A");
 });
 
+test("parses unnamed leaves in descendant lists", () => {
+  assert.deepEqual(parse("(,,(,));"), {
+    branchset: [{}, {}, { branchset: [{}, {}] }]
+  });
+  assert.deepEqual(parse("(A,,B,);"), {
+    branchset: [{ name: "A" }, {}, { name: "B" }, {}]
+  });
+  assert.deepEqual(parse("();"), { branchset: [{}] });
+});
+
+test("round-trips unnamed leaves with comments and branch lengths", () => {
+  const tree = parse("([leaf], [length]:0, :1.5, B:2);");
+  assert.deepEqual(tree, {
+    branchset: [{}, { length: 0 }, { length: 1.5 }, { name: "B", length: 2 }]
+  });
+  assert.deepEqual(parse(serialize(tree)), tree);
+});
+
+test("round-trips unnamed root-only trees", () => {
+  for (const tree of [{}, { length: 0 }, { length: 1 }]) {
+    assert.deepEqual(parse(serialize(tree)), tree);
+  }
+});
+
+test("still rejects malformed structure around unnamed leaves", () => {
+  for (const input of ["", "[comment]", "(", "(,", "(,;", "(A;B);", ");", ",;", "(]);", "(:);", "(A,B);;"]) {
+    assert.throws(() => parse(input), SyntaxError, input);
+  }
+});
+
 test("parses quoted labels with delimiters and escaped quotes", () => {
   const tree = parse("('A,B':1,'C:D':2,'E''F':3);");
   assert.equal(tree.branchset[0].name, "A,B");
@@ -75,4 +105,20 @@ test("quotes labels that contain special characters", () => {
     ]
   };
   assert.equal(serialize(tree), "('A B':1,'C''D':2);");
+});
+
+test("quotes literal underscores in leaf and internal labels", () => {
+  for (const input of ["'A_B';", "('A_B',C)'R_T';"]) {
+    const tree = parse(input);
+    assert.equal(serialize(tree), input);
+    assert.deepEqual(parse(serialize(tree)), tree);
+  }
+});
+
+test("preserves explicitly empty labels when serializing", () => {
+  for (const input of ["'';", "('':1,B:2)'';"]) {
+    const tree = parse(input);
+    assert.equal(serialize(tree), input);
+    assert.deepEqual(parse(serialize(tree)), tree);
+  }
 });
