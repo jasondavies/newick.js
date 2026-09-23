@@ -4,6 +4,12 @@ JavaScript library for parsing and serializing the Newick tree format.
 
 Reference: <https://en.wikipedia.org/wiki/Newick_format>
 
+## Installation
+
+```sh
+npm install @jasondavies/newick
+```
+
 ## API
 
 ### `parse(input)`
@@ -32,7 +38,7 @@ Parses a Newick string and returns a tree object.
 Example:
 
 ```js
-const Newick = require("./src/newick");
+const Newick = require("@jasondavies/newick");
 const tree = Newick.parse("(A:0.1,'B C':0.2)Root:1.0;");
 
 // tree:
@@ -65,7 +71,7 @@ Serializes a tree object into Newick text.
 Example:
 
 ```js
-const Newick = require("./src/newick");
+const Newick = require("@jasondavies/newick");
 
 const text = Newick.serialize({
   name: "Root",

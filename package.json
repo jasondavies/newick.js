@@ -1,15 +1,22 @@
 {
-  "name": "newick",
-  "version": "0.0.0",
-  "description": "JavaScript library for parsing the Newick format.",
+  "name": "@jasondavies/newick",
+  "version": "1.0.0",
+  "description": "JavaScript library for parsing and serializing the Newick tree format.",
   "main": "src/newick.js",
+  "files": [
+    "src/newick.js"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "author": "Jason Davies",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/jasondavies/newick.js.git"
   },
   "scripts": {
-    "test": "node --test test/test.js"
+    "test": "node --test test/test.js",
+    "prepublishOnly": "npm test"
   },
   "keywords": [
     "newick",
